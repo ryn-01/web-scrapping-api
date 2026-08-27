@@ -1,0 +1,28 @@
+{
+  "name": "web-scrapping-api",
+  "version": "1.0.0",
+  "description": "scrap target website with predefine instruction",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryn-01/web-scrapping-api.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ryn-01/web-scrapping-api/issues"
+  },
+  "homepage": "https://github.com/ryn-01/web-scrapping-api#readme",
+  "dependencies": {
+    "puppeteer": "^25.9.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-adblocker": "^2.13.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "type": "module"
+}
