@@ -1,0 +1,25 @@
+{
+  "goto-1": "https://www.w3schools.com/python/python_intro.asp",
+  "locate-1": {
+    "type": "input",
+    "selector": "#tnb-google-search-input",
+    "query": "Get Started C++"
+  },
+
+  "waitFor-1": ".gsc-result",
+
+  "locate-2": {
+    "type": "link",
+    "selector": "a.gs-title"
+  },
+
+  "get-1": {
+    "selector": "h1.with-bookmark",
+    "atributes": ["textContent", "innerHTML"]
+  },
+
+  "get-2": {
+    "selector": "p",
+    "atributes": ["textContent"]
+  }
+}

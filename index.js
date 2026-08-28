@@ -1,36 +1,74 @@
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth'
-import AdblockerPlugin from 'puppeteer-extra-plugin-adblocker'
+import puppeteer from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import AdblockerPlugin from "puppeteer-extra-plugin-adblocker";
 
-puppeteer.use(StealthPlugin())
-puppeteer.use(AdblockerPlugin({ blockTrackers: true }))
+puppeteer.use(StealthPlugin());
+puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
-const browser = await puppeteer.launch({headless:false, defaultViewport: null})
-const page = await browser.newPage()
+let dataCount = 0;
+const collectedData = {};
 
-await page.goto('https://www.w3schools.com/python/python_intro.asp');
+import rf, { link } from "fs";
+import { resolve } from "dns";
+function GetInstruction(filePath) {
+  try {
+    return JSON.parse(rf.readFileSync(filePath, "utf-8"));
+  } catch (err) {
+    console.log(err.message);
+  }
+}
 
+const method = {
+  goto: async (page, value) => await page.goto(value),
 
-let selector = "#tnb-google-search-input"
-let query = "Get Started C++"
+  waitFor: async (page, value) => await page.waitForSelector(value),
 
-await page.waitForSelector(selector)
-await page.locator(selector).fill(query)
-await page.keyboard.press("Enter")
+  locate: async (page, data, browser) => {
+    const target = await page.locator(data.selector);
 
-await page.waitForSelector(".gsc-wrapper")
-await page.waitForSelector(".gsc-result")
+    if (data.type == "input") {
+      await target.fill(data.query);
+      await page.keyboard.press("Enter");
+    } else if (data.type == "button") {
+      await target.click();
+    } else if (data.type == "link") {
+      const rawlistLinks = await page.$$eval(data.selector, (elements) => {
+        return elements.map((el) => el.href);
+      });
+      const filteredLinks = [...new Set(rawlistLinks)];
+      page.goto(filteredLinks[0]);
+    }
+  },
 
-const rawlistLinks = await page.$$eval(
-    'div.gsc-wrapper a',
-    (elements) => {return elements.map(el => el.href)}
-);
+  get: async (page, data) => {
+    await page.waitForSelector(data.selector);
 
-const filteredLinks = [... new Set(rawlistLinks)]
+    collectedData[data.selector + `-${dataCount}`] = await page.$eval(
+      data.selector,
+      (el, selectedAtrb) => {
+        let selectedData = {};
+        selectedAtrb.forEach((atrb) => {
+          selectedData[atrb] = el[atrb];
+        });
+        return selectedData;
+      },
+      data.atributes,
+    );
+    dataCount += 1;
+  },
+};
 
+async function CompileInstruction(list) {
+  const browser = await puppeteer.launch({
+    headless: false,
+    defaultViewport: null,
+  });
+  const page = await browser.newPage();
 
+  for (const [key, value] of Object.entries(list)) {
+    await method[key.replace(/[^a-zA-Z]/g, "")](page, value, browser);
+  }
+}
 
-console.log(filteredLinks)
-await page.goto(filteredLinks[0])
-
-await page.setViewport({width: 1080, height: 1024});
+const instrution = GetInstruction("instruction.json");
+CompileInstruction(instrution);
