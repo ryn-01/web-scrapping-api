@@ -19,31 +19,29 @@ function GetInstruction(filePath) {
 }
 
 const method = {
-  goto: async (page, value) => await page.goto(value),
+  goto: async (page, selector) =>
+    await page.goto(selector, { waitUntil: "networkidle2" }),
 
-  waitFor: async (page, value) => await page.waitForSelector(value),
+  waitFor: async (page, selector) => await page.waitForSelector(selector),
 
-  locate: async (page, data, browser) => {
-    const target = await page.locator(data.selector);
-
-    if (data.type == "input") {
-      await target.fill(data.query);
-      await page.keyboard.press("Enter");
-    } else if (data.type == "button") {
-      await target.click();
-    } else if (data.type == "link") {
-      const rawlistLinks = await page.$$eval(data.selector, (elements) => {
-        return elements.map((el) => el.href);
-      });
-      const filteredLinks = [...new Set(rawlistLinks)];
-      page.goto(filteredLinks[0]);
-    }
+  search: async (page, data) => {
+    await page.locator(data.selector).fill(data.query);
+    await page.keyboard.press("Enter");
   },
 
-  get: async (page, data) => {
+  clickBtn: async (page, selector) => await page.locator(selector).click(),
+
+  clickLnk: async (page, selector) => {
+    const link = await page.$eval(selector, el => el.href);
+    await page.goto(link, {waitUntil: "networkidle2"})
+  },
+
+  input: async (page, data) => await page.locator(data.selector).fill(data.query),
+    
+  extract: async (page, data) => {
     await page.waitForSelector(data.selector);
 
-    collectedData[data.selector + `-${dataCount}`] = await page.$eval(
+    collectedData[dataCount] = await page.$eval(
       data.selector,
       (el, selectedAtrb) => {
         let selectedData = {};
@@ -51,6 +49,29 @@ const method = {
           selectedData[atrb] = el[atrb];
         });
         return selectedData;
+      },
+      data.atributes,
+    );
+    dataCount += 1;
+  },
+
+  extractAll: async (page, data) => {
+    await page.waitForSelector(data.selector);
+
+    collectedData[dataCount] = await page.$$eval(
+      data.selector,
+      (els, selectedAtrb) => {
+        let result = {};
+        els.forEach((el, index) => {
+          let selectedData = {};
+
+          for (let i = 0; i < selectedAtrb.length; i++) {
+            let atrbName = selectedAtrb[i];
+            selectedData[atrbName] = el[atrbName];
+          }
+          result[index + 1] = selectedData;
+        });
+        return result;
       },
       data.atributes,
     );
@@ -66,8 +87,11 @@ async function CompileInstruction(list) {
   const page = await browser.newPage();
 
   for (const [key, value] of Object.entries(list)) {
-    await method[key.replace(/[^a-zA-Z]/g, "")](page, value, browser);
+    await method[key.replace(/[^a-zA-Z]/g, "")](page, value);
   }
+
+  console.log(collectedData);
+  browser.close();
 }
 
 const instrution = GetInstruction("instruction.json");

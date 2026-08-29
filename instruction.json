@@ -1,24 +1,21 @@
 {
   "goto-1": "https://www.w3schools.com/python/python_intro.asp",
-  "locate-1": {
-    "type": "input",
+
+  "search-2": {
     "selector": "#tnb-google-search-input",
     "query": "Get Started C++"
   },
 
-  "waitFor-1": ".gsc-result",
+  "waitFor-3": ".gsc-result",
 
-  "locate-2": {
-    "type": "link",
-    "selector": "a.gs-title"
-  },
+  "clickLnk-4": "a.gs-title",
 
-  "get-1": {
+  "extract-5": {
     "selector": "h1.with-bookmark",
-    "atributes": ["textContent", "innerHTML"]
+    "atributes": ["textContent"]
   },
 
-  "get-2": {
+  "extractAll-6": {
     "selector": "p",
     "atributes": ["textContent"]
   }
