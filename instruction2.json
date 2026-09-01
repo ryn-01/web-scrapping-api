@@ -1,0 +1,10 @@
+{
+  "goto-1": "https://www.worldometers.info/geography/alphabetical-list-of-countries/",
+
+  "extract-2": {
+    "selector": "div.prose > h1",
+    "atributes": ["textContent"]
+  },
+
+  "extractTable-3": "div.datatable-container > table"
+}

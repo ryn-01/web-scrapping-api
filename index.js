@@ -32,12 +32,13 @@ const method = {
   clickBtn: async (page, selector) => await page.locator(selector).click(),
 
   clickLnk: async (page, selector) => {
-    const link = await page.$eval(selector, el => el.href);
-    await page.goto(link, {waitUntil: "networkidle2"})
+    const link = await page.$eval(selector, (el) => el.href);
+    await page.goto(link, { waitUntil: "networkidle2" });
   },
 
-  input: async (page, data) => await page.locator(data.selector).fill(data.query),
-    
+  input: async (page, data) =>
+    await page.locator(data.selector).fill(data.query),
+
   extract: async (page, data) => {
     await page.waitForSelector(data.selector);
 
@@ -77,6 +78,19 @@ const method = {
     );
     dataCount += 1;
   },
+
+  extractTable: async (page, selector) => {
+    await page.waitForSelector(selector);
+
+    collectedData[dataCount] = await page.$$eval(selector, (rows) => {
+      return rows.map((row) =>
+        [...row.querySelectorAll("th, td")].map((cell) =>
+          cell.innerText.trim(),
+        ),
+      );
+    });
+    dataCount += 1;
+  },
 };
 
 async function CompileInstruction(list) {
@@ -94,5 +108,5 @@ async function CompileInstruction(list) {
   browser.close();
 }
 
-const instrution = GetInstruction("instruction.json");
+const instrution = GetInstruction("instruction2.json");
 CompileInstruction(instrution);
