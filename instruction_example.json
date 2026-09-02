@@ -1,0 +1,8 @@
+[
+    {"action" : "goto", "value" : "https://www.w3schools.com/python/python_intro.asp"},
+    {"action" : "search", "value" : {"selector" :  "#tnb-google-search-input", "query" : "Get Started C++"}},
+    {"action" : "waitFor", "value" : ".gsc-result"},
+    {"action" : "clickLnk", "value" : "a.gs-title"},
+    {"action" : "extract", "value" : {"selector" : "h1.with-bookmark", "atributes" : ["textContent"]}},
+    {"action" : "extractAll", "value" : {"selector" : "p", "atributes" : ["textContent"]}} 
+]

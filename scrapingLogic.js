@@ -6,8 +6,7 @@ puppeteer.use(StealthPlugin());
 puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
 async function CompileInstruction(list) {
-  let dataCount = 0;
-  const collectedData = {};
+  const collectedData = [];
 
   const method = {
     goto: async (page, selector) =>
@@ -33,54 +32,57 @@ async function CompileInstruction(list) {
     extract: async (page, data) => {
       await page.waitForSelector(data.selector);
 
-      collectedData[dataCount] = await page.$eval(
-        data.selector,
-        (el, selectedAtrb) => {
-          let selectedData = {};
-          selectedAtrb.forEach((atrb) => {
-            selectedData[atrb] = el[atrb];
-          });
-          return selectedData;
-        },
-        data.atributes,
+      collectedData.push(
+        await page.$eval(
+          data.selector,
+          (el, selectedAtrb) => {
+            let selectedData = {};
+            selectedAtrb.forEach((atrb) => {
+              selectedData[atrb] = el[atrb];
+            });
+            return selectedData;
+          },
+          data.atributes,
+        ),
       );
-      dataCount += 1;
     },
 
     extractAll: async (page, data) => {
       await page.waitForSelector(data.selector);
 
-      collectedData[dataCount] = await page.$$eval(
-        data.selector,
-        (els, selectedAtrb) => {
-          let result = {};
-          els.forEach((el, index) => {
-            let selectedData = {};
+      collectedData.push(
+        await page.$$eval(
+          data.selector,
+          (els, selectedAtrb) => {
+            let result = [];
+            els.forEach((el, index) => {
+              let selectedData = {};
 
-            for (let i = 0; i < selectedAtrb.length; i++) {
-              let atrbName = selectedAtrb[i];
-              selectedData[atrbName] = el[atrbName];
-            }
-            result[index + 1] = selectedData;
-          });
-          return result;
-        },
-        data.atributes,
+              for (let i = 0; i < selectedAtrb.length; i++) {
+                let atrbName = selectedAtrb[i];
+                selectedData[atrbName] = el[atrbName];
+              }
+              result.push(selectedData);
+            });
+            return result;
+          },
+          data.atributes,
+        ),
       );
-      dataCount += 1;
     },
 
     extractTable: async (page, selector) => {
       await page.waitForSelector(selector);
 
-      collectedData[dataCount] = await page.$$eval(selector, (rows) => {
-        return rows.map((row) =>
-          [...row.querySelectorAll("th, td")].map((cell) =>
-            cell.innerText.trim(),
-          ),
-        );
-      });
-      dataCount += 1;
+      collectedData.push(
+        await page.$$eval(selector, (rows) => {
+          return rows.map((row) =>
+            [...row.querySelectorAll("th, td")].map((cell) =>
+              cell.innerText.trim(),
+            ),
+          );
+        }),
+      );
     },
   };
 
@@ -91,8 +93,10 @@ async function CompileInstruction(list) {
   const page = await browser.newPage();
 
   try {
-    for (const [key, value] of Object.entries(list)) {
-      await method[key.replace(/[^a-zA-Z]/g, "")](page, value);
+    for (const step of list) {
+      const func = method[step.action];
+      if (!func) throw new Error(`Unknown action: ${method[step.action]}`);
+      await func(page, step.value);
     }
   } catch (err) {
     return { success: false, error: err.message };
