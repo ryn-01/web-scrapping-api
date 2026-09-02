@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/ryn-01/web-scrapping-api#readme",
   "dependencies": {
+    "express": "^5.2.1",
     "puppeteer": "^25.9.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-adblocker": "^2.13.6",

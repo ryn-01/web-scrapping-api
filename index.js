@@ -1,112 +1,21 @@
-import puppeteer from "puppeteer-extra";
-import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import AdblockerPlugin from "puppeteer-extra-plugin-adblocker";
+import CompileInstruction from "./scrapingLogic.js";
+import express from "express"
 
-puppeteer.use(StealthPlugin());
-puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
+const app = express();
+app.use(express.json());
+const PORT = 3000;
 
-let dataCount = 0;
-const collectedData = {};
-
-import rf, { link } from "fs";
-import { resolve } from "dns";
-function GetInstruction(filePath) {
-  try {
-    return JSON.parse(rf.readFileSync(filePath, "utf-8"));
-  } catch (err) {
-    console.log(err.message);
+app.post("/api/data", async(req, res) => {
+  const instruction = req.body;
+  const result = await CompileInstruction(instruction)
+  
+  if (result.success) {
+    res.status(201).json(result.data)
+  } else {
+    res.status(400).json({message: result.error})
   }
-}
+});
 
-const method = {
-  goto: async (page, selector) =>
-    await page.goto(selector, { waitUntil: "networkidle2" }),
-
-  waitFor: async (page, selector) => await page.waitForSelector(selector),
-
-  search: async (page, data) => {
-    await page.locator(data.selector).fill(data.query);
-    await page.keyboard.press("Enter");
-  },
-
-  clickBtn: async (page, selector) => await page.locator(selector).click(),
-
-  clickLnk: async (page, selector) => {
-    const link = await page.$eval(selector, (el) => el.href);
-    await page.goto(link, { waitUntil: "networkidle2" });
-  },
-
-  input: async (page, data) =>
-    await page.locator(data.selector).fill(data.query),
-
-  extract: async (page, data) => {
-    await page.waitForSelector(data.selector);
-
-    collectedData[dataCount] = await page.$eval(
-      data.selector,
-      (el, selectedAtrb) => {
-        let selectedData = {};
-        selectedAtrb.forEach((atrb) => {
-          selectedData[atrb] = el[atrb];
-        });
-        return selectedData;
-      },
-      data.atributes,
-    );
-    dataCount += 1;
-  },
-
-  extractAll: async (page, data) => {
-    await page.waitForSelector(data.selector);
-
-    collectedData[dataCount] = await page.$$eval(
-      data.selector,
-      (els, selectedAtrb) => {
-        let result = {};
-        els.forEach((el, index) => {
-          let selectedData = {};
-
-          for (let i = 0; i < selectedAtrb.length; i++) {
-            let atrbName = selectedAtrb[i];
-            selectedData[atrbName] = el[atrbName];
-          }
-          result[index + 1] = selectedData;
-        });
-        return result;
-      },
-      data.atributes,
-    );
-    dataCount += 1;
-  },
-
-  extractTable: async (page, selector) => {
-    await page.waitForSelector(selector);
-
-    collectedData[dataCount] = await page.$$eval(selector, (rows) => {
-      return rows.map((row) =>
-        [...row.querySelectorAll("th, td")].map((cell) =>
-          cell.innerText.trim(),
-        ),
-      );
-    });
-    dataCount += 1;
-  },
-};
-
-async function CompileInstruction(list) {
-  const browser = await puppeteer.launch({
-    headless: false,
-    defaultViewport: null,
-  });
-  const page = await browser.newPage();
-
-  for (const [key, value] of Object.entries(list)) {
-    await method[key.replace(/[^a-zA-Z]/g, "")](page, value);
-  }
-
-  console.log(collectedData);
-  browser.close();
-}
-
-const instrution = GetInstruction("instruction2.json");
-CompileInstruction(instrution);
+app.listen(PORT, () => {
+  console.log(`Listening At : ${PORT}`);
+});
