@@ -1,22 +1,32 @@
 import CompileInstruction from "./scrapingLogic.js";
 import express from "express"
 import rateLimit from "express-rate-limit";
+import 'dotenv/config';
 
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes in milliseconds
-  limit: 5,               // Limit each IP to 5 requests per windowMs
+  windowMs: 10 * 60 * 1000, // 15 minutes in milliseconds
+  limit: 10,               // Limit each IP to 5 requests per windowMs
   standardHeaders: 'draft-7', // return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false,     // Disable the older `X-RateLimit-*` headers
   message: 'Too many requests from this IP, please try again later.',
 });
 
+function checkApiKey(req, res, next){
+  const clientKey = req.headers['x-api-key']
+  const secretKey = process.env.APP_API_KEY
+
+  if (clientKey === secretKey){
+    next()
+  } else {
+    res.status(404).json({message: "Key Not Valid"})
+  }
+}
+
 const app = express();
 app.use(express.json());
 app.use(globalLimiter);
 
-const PORT = 3000;
-
-app.post("/api/data", async(req, res) => {
+app.post("/api/data", checkApiKey, async(req, res) => {
   const instruction = req.body;
   const result = await CompileInstruction(instruction)
   
@@ -27,6 +37,6 @@ app.post("/api/data", async(req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Listening At : ${PORT}`);
+app.listen(process.env.PORT, () => {
+  console.log(`Listening At : ${process.env.PORT}`);
 });

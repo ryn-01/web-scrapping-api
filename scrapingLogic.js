@@ -5,10 +5,13 @@ import AdblockerPlugin from "puppeteer-extra-plugin-adblocker";
 puppeteer.use(StealthPlugin());
 puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
+const BROWSER_LIFE_DURATION = 15 * 60 * 1000
 let browserInstance = null;
+let browserTimer = null;
 
 async function getBrowser() {
   if (browserInstance && browserInstance.connected) {
+    clearTimeout(browserTimer)
     return browserInstance
   }
 
@@ -99,6 +102,10 @@ async function CompileInstruction(list) {
     return { success: false, error: err.message };
   } finally {
     await page.close()
+
+    browserTimer = setTimeout(()=> {
+      browserInstance.close()
+    },BROWSER_LIFE_DURATION)
   }
 
   return { success: true, data: collectedData };

@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/ryn-01/web-scrapping-api#readme",
   "dependencies": {
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "puppeteer": "^25.9.0",
