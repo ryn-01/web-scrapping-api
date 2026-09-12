@@ -29,18 +29,21 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 app.post("/api/data", checkApiKey, async(req, res) => {
-  const instruction = req.body;
-  const result = await CompileInstruction(instruction)
-  
-  if (result.success) {
-    res.status(201).json(result.data)
-  } else {
-    res.status(400).json({message: result.error})
+  try {
+    const instruction = req.body;
+    const result = await CompileInstruction(instruction)
+
+    if (result.success) {
+      res.status(201).json(result.data)
+    } else {
+      res.status(400).json({message: result.error})
+    }
+  } catch (error) {
+    console.error("Scraping request failed:", error);
+    res.status(500).json({message: "Unable to start the scraper"})
   }
 });
 
-const server = app.listen(process.env.PORT, () => {
+app.listen(process.env.PORT, () => {
   console.log(`Listening At : ${process.env.PORT}`);
 });
-server.timeout = 12000;
-

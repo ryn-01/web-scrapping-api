@@ -5,35 +5,80 @@ import AdblockerPlugin from "puppeteer-extra-plugin-adblocker";
 puppeteer.use(StealthPlugin());
 puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
-const BROWSER_LIFE_DURATION = 15 * 60 * 1000
+const BROWSER_LIFE_DURATION = 15 * 60 * 1000;
 let browserInstance = null;
 let browserTimer = null;
 
+function resetBrowserTimer() {
+  if (browserTimer) clearTimeout(browserTimer);
+
+  browserTimer = setTimeout(async () => {
+    if (browserInstance) {
+      console.log("Shutting down idle browser...");
+      await browserInstance.close();
+      browserInstance = null;
+    }
+  }, BROWSER_LIFE_DURATION);
+}
+
 async function getBrowser() {
   if (browserInstance && browserInstance.connected) {
-    clearTimeout(browserTimer)
-    return browserInstance
+    resetBrowserTimer();
+    return browserInstance;
   }
 
-  browserInstance = await puppeteer.launch({ headless: true, defaultViewport: null, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+  browserInstance = await puppeteer.launch({
+    headless: true,
+    protocolTimeout: 240000,
+    defaultViewport: null,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+    ],
+  });
+
+  resetBrowserTimer();
+  return browserInstance;
 }
 
 const methods = {
   goto: async (page, selector) =>
-    await page.goto(selector, { waitUntil: "networkidle2" }),
+    await page.goto(selector, { waitUntil: "domcontentloaded" }),
 
   waitFor: async (page, selector) => await page.waitForSelector(selector),
 
   search: async (page, data) => {
-    await page.locator(data.selector).fill(data.query);
-    await page.keyboard.press("Enter");
+    await page.waitForSelector(data.selector);
+    await page.$eval(
+      data.selector,
+      (element, query) => {
+        element.focus();
+        element.value = query;
+        element.dispatchEvent(new Event("input", { bubbles: true }));
+        element.dispatchEvent(new Event("change", { bubbles: true }));
+        for (const eventType of ["keydown", "keypress", "keyup"]) {
+          element.dispatchEvent(
+            new KeyboardEvent(eventType, {
+              key: "Enter",
+              code: "Enter",
+              keyCode: 13,
+              which: 13,
+              bubbles: true,
+            }),
+          );
+        }
+      },
+      data.query,
+    );
   },
 
   clickBtn: async (page, selector) => await page.locator(selector).click(),
 
   clickLnk: async (page, selector) => {
     const link = await page.$eval(selector, (el) => el.href);
-    await page.goto(link, { waitUntil: "networkidle2" });
+    await page.goto(link, { waitUntil: "domcontentloaded" });
   },
 
   input: async (page, data) =>
@@ -41,73 +86,85 @@ const methods = {
 
   extract: async (page, data, collectedData) => {
     await page.waitForSelector(data.selector);
-    collectedData.push(await page.$eval(
-      data.selector,
-      (el, selectedAtrb) => {
-        let selectedData = {};
-        selectedAtrb.forEach((atrb) => {
-          selectedData[atrb] = el[atrb];
-        });
-        return selectedData;
-      },
-      data.atributes,
-    ))
+    collectedData.push(
+      await page.$eval(
+        data.selector,
+        (el, selectedAtrb) => {
+          let selectedData = {};
+          selectedAtrb.forEach((atrb) => {
+            selectedData[atrb] = el[atrb];
+          });
+          return selectedData;
+        },
+        data.atributes,
+      ),
+    );
   },
 
   extractAll: async (page, data, collectedData) => {
     await page.waitForSelector(data.selector);
 
-    collectedData.push(await page.$$eval(
-      data.selector,
-      (els, selectedAtrb) => {
-        let result = [];
-        els.forEach((el, index) => {
-          let selectedData = {};
-          for (let i = 0; i < selectedAtrb.length; i++) {
-            let atrbName = selectedAtrb[i];
-            selectedData[atrbName] = el[atrbName];
-          }
-          result.push(selectedData);
-        });
-        return result;
-      },
-      data.atributes,
-    ))
+    collectedData.push(
+      await page.$$eval(
+        data.selector,
+        (els, selectedAtrb) => {
+          let result = [];
+          els.forEach((el, index) => {
+            let selectedData = {};
+            for (let i = 0; i < selectedAtrb.length; i++) {
+              let atrbName = selectedAtrb[i];
+              selectedData[atrbName] = el[atrbName];
+            }
+            result.push(selectedData);
+          });
+          return result;
+        },
+        data.atributes,
+      ),
+    );
   },
 
   extractTable: async (page, selector, collectedData) => {
     await page.waitForSelector(selector);
-    collectedData.push(await page.$$eval(selector, (rows) => {
-      return rows.map((row) =>
-        [...row.querySelectorAll("th, td")].map((cell) =>
-          cell.innerText.trim(),
-        ),
-      );
-    }))
+    collectedData.push(
+      await page.$$eval(selector, (rows) => {
+        return rows.map((row) =>
+          [...row.querySelectorAll("th, td")].map((cell) =>
+            cell.innerText.trim(),
+          ),
+        );
+      }),
+    );
   },
 };
 
 async function CompileInstruction(list) {
-  await getBrowser()
-  const page = await browserInstance.newPage();
-  page.setDefaultNavigationTimeout(60000); 
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+
+  page.setDefaultNavigationTimeout(60000);
   page.setDefaultTimeout(60000);
+
   const collectedData = [];
 
   try {
-    for (const step of list) {
+    for (const [index, step] of list.entries()) {
       const func = methods[step.action];
       if (!func) throw new Error(`Unknown action: ${step.action}`);
-      await func(page, step.value, collectedData);
+      try {
+        await func(page, step.value, collectedData);
+      } catch (err) {
+        throw new Error(
+          `Action ${index + 1} (${step.action}) failed: ${err.message}`,
+        );
+      }
     }
   } catch (err) {
     return { success: false, error: err.message };
   } finally {
-    await page.close()
+    await page.close();
 
-    browserTimer = setTimeout(() => {
-      browserInstance.close()
-    }, BROWSER_LIFE_DURATION)
+    resetBrowserTimer();
   }
 
   return { success: true, data: collectedData };
