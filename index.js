@@ -3,14 +3,6 @@ import express from "express"
 import rateLimit from "express-rate-limit";
 import 'dotenv/config';
 
-const globalLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 15 minutes in milliseconds
-  limit: 50,               // Limit each IP to 5 requests per windowMs
-  standardHeaders: 'draft-7', // return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false,     // Disable the older `X-RateLimit-*` headers
-  message: 'Too many requests from this IP, please try again later.',
-});
-
 function checkApiKey(req, res, next){
   const clientKey = req.headers['x-api-key']
   const secretKey = process.env.APP_API_KEY
@@ -25,6 +17,15 @@ function checkApiKey(req, res, next){
 const app = express();
 app.set('trust proxy', 1);
 app.use(express.json());
+
+const globalLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 15 minutes in milliseconds
+  limit: 50,               // Limit each IP to 5 requests per windowMs
+  standardHeaders: 'draft-7', // return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false,     // Disable the older `X-RateLimit-*` headers
+  message: 'Too many requests from this IP, please try again later.',
+});
+
 app.use(globalLimiter);
 
 app.post("/api/data", checkApiKey, async(req, res) => {
