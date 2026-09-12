@@ -5,7 +5,7 @@ import 'dotenv/config';
 
 const globalLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 15 minutes in milliseconds
-  limit: 10,               // Limit each IP to 5 requests per windowMs
+  limit: 50,               // Limit each IP to 5 requests per windowMs
   standardHeaders: 'draft-7', // return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false,     // Disable the older `X-RateLimit-*` headers
   message: 'Too many requests from this IP, please try again later.',
