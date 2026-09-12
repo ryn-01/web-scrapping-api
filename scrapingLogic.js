@@ -15,7 +15,7 @@ async function getBrowser() {
     return browserInstance
   }
 
-  browserInstance = await puppeteer.launch({ headless: true, defaultViewport: null, })
+  browserInstance = await puppeteer.launch({ headless: true, defaultViewport: null,args: ['--no-sandbox', '--disable-setuid-sandbox']})
 }
 
 const methods = {
