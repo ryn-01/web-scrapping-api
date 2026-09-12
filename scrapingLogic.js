@@ -15,7 +15,7 @@ async function getBrowser() {
     return browserInstance
   }
 
-  browserInstance = await puppeteer.launch({ headless: true, defaultViewport: null,args: ['--no-sandbox', '--disable-setuid-sandbox']})
+  browserInstance = await puppeteer.launch({ headless: true, defaultViewport: null, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
 }
 
 const methods = {
@@ -90,6 +90,8 @@ const methods = {
 async function CompileInstruction(list) {
   await getBrowser()
   const page = await browserInstance.newPage();
+  page.setDefaultNavigationTimeout(60000); 
+  page.setDefaultTimeout(60000);
   const collectedData = [];
 
   try {
@@ -103,9 +105,9 @@ async function CompileInstruction(list) {
   } finally {
     await page.close()
 
-    browserTimer = setTimeout(()=> {
+    browserTimer = setTimeout(() => {
       browserInstance.close()
-    },BROWSER_LIFE_DURATION)
+    }, BROWSER_LIFE_DURATION)
   }
 
   return { success: true, data: collectedData };

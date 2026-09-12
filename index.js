@@ -39,6 +39,8 @@ app.post("/api/data", checkApiKey, async(req, res) => {
   }
 });
 
-app.listen(process.env.PORT, () => {
+const server = app.listen(process.env.PORT, () => {
   console.log(`Listening At : ${process.env.PORT}`);
 });
+server.timeout = 12000;
+
